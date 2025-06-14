@@ -1,0 +1,10 @@
+{
+  "domain": "waha",
+  "name": "WAHA WhatsApp Integration",
+  "documentation": "https://github.com/your-repo/waha",
+  "dependencies": [],
+  "codeowners": ["@your-github-username"],
+  "requirements": ["aiohttp"],
+  "config_flow": true,
+  "version": "0.1.0"
+} 

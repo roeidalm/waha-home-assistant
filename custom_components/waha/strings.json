@@ -1,0 +1,54 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to WAHA WhatsApp API",
+        "description": "Set up WAHA integration to send and receive WhatsApp messages",
+        "data": {
+          "base_url": "WAHA Server URL (e.g., http://your-waha-instance:3000)",
+          "api_key": "API Key (optional)",
+          "session_name": "WhatsApp Session Name",
+          "default_recipients": "Default Recipients (comma separated phone numbers)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to WAHA server. Please check the URL and API key.",
+      "invalid_auth": "Invalid authentication. Please check your API key.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "WAHA is already configured for this server."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WAHA Options",
+        "description": "Update your WAHA integration settings",
+        "data": {
+          "default_recipients": "Default Recipients (comma separated phone numbers)",
+          "session_name": "WhatsApp Session Name"
+        }
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "waha_whatsapp": {
+        "name": "WAHA WhatsApp Notification",
+        "description": "Send a WhatsApp message to one or more recipients using the WAHA integration.",
+        "fields": {
+          "message": {
+            "description": "The message to send via WhatsApp.",
+            "example": "Hello from Home Assistant!"
+          },
+          "target": {
+            "description": "Phone number(s) to send the message to. Use international format (e.g., +1234567890).",
+            "example": "+1234567890"
+          }
+        }
+      }
+    }
+  }
+} 

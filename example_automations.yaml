@@ -1,0 +1,34 @@
+# Example: Send WhatsApp alert for security event
+- alias: 'Send WhatsApp on Security Alert'
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.door
+      to: 'on'
+  action:
+    - service: notify.waha_whatsapp
+      data:
+        message: 'Security alert: Door opened!'
+        target: '+1234567890'
+
+# Example: Trigger action based on received WhatsApp message
+- alias: 'Turn on Lights from WhatsApp Message'
+  trigger:
+    - platform: event
+      event_type: waha_message_received
+      event_data:
+        message: 'Turn on the lights'
+  action:
+    - service: light.turn_on
+      target:
+        entity_id: light.living_room
+
+# Example: Send Home Assistant status via WhatsApp
+- alias: 'Send HA Status via WhatsApp'
+  trigger:
+    - platform: time
+      at: '08:00:00'
+  action:
+    - service: notify.waha_whatsapp
+      data:
+        message: 'Home Assistant is up and running.'
+        target: '+1234567890' 
