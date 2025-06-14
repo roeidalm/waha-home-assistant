@@ -1,10 +1,10 @@
 {
   "domain": "waha",
   "name": "WAHA WhatsApp Integration",
-  "documentation": "https://github.com/your-repo/waha",
+  "documentation": "https://github.com/roeidalm/waha-home-assistant",
   "dependencies": [],
-  "codeowners": ["@your-github-username"],
+  "codeowners": ["@roeidalm"],
   "requirements": ["aiohttp"],
   "config_flow": true,
-  "version": "0.1.2"
+  "version": "0.1.3"
 } 
