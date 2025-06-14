@@ -35,8 +35,9 @@ class WahaApiClient:
             self.message_timestamps.append(time.time())
 
     async def test_connection(self) -> bool:
-        url = f"{self.base_url}/api/status"
+        url = f"{self.base_url}/api/server/status"
         headers = self._get_headers()
+        headers["accept"] = "application/json"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers, timeout=10) as resp:
