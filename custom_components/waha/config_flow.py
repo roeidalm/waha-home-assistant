@@ -51,8 +51,8 @@ class WahaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Test connection to the WAHA instance using aiohttp."""
         import aiohttp
 
-        url = data[CONF_BASE_URL].rstrip("/") + "/api/status"
-        headers = {}
+        url = f"{data[CONF_BASE_URL].rstrip('/')}/api/server/status"
+        headers = {"accept": "application/json"}
         if data.get(CONF_API_KEY):
             headers["Authorization"] = f"Bearer {data[CONF_API_KEY]}"
         try:
