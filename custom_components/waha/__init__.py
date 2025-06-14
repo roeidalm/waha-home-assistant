@@ -85,9 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # if not await async_setup_webhook(hass, entry, client):
     #     _LOGGER.warning("Failed to set up webhook, but continuing with setup")
     # Set up notify platform
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "notify")
-    )
+    await hass.config_entries.async_forward_entry_setup(entry, "notify")
     return True
 
 def get_connection_status(hass: HomeAssistant, entry_id: str) -> str:
@@ -97,7 +95,7 @@ def get_connection_status(hass: HomeAssistant, entry_id: str) -> str:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # Unload notify platform
-    unload_ok = await hass.async_forward_entry_unload(entry, "notify")
+    unload_ok = await hass.config_entries.async_forward_entry_unload(entry, "notify")
     # Remove entry data
     if unload_ok and entry.entry_id in hass.data[DOMAIN]:
         hass.data[DOMAIN].pop(entry.entry_id)
