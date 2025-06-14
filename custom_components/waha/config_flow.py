@@ -7,6 +7,7 @@ from homeassistant.core import callback
 from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_entry_oauth2_flow
+import traceback
 
 from .const import (
     DOMAIN,
@@ -61,7 +62,7 @@ class WahaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     if resp.status == 200:
                         return True
         except Exception as exc:
-            _LOGGER.error("WAHA connection test failed: %s", exc)
+            _LOGGER.error("WAHA connection test failed for URL %s: %s\n%s", url, exc, traceback.format_exc())
         return False
 
     @staticmethod

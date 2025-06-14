@@ -5,7 +5,7 @@ from .helpers import async_retry
 import time
 from collections import deque
 import asyncio
-
+import traceback
 _LOGGER = logging.getLogger(__name__)
 
 class WahaApiClient:
@@ -45,7 +45,7 @@ class WahaApiClient:
                         return True
                     _LOGGER.error("WAHA status check failed: %s", resp.status)
         except Exception as exc:
-            _LOGGER.error("WAHA connection test failed: %s", exc)
+            _LOGGER.error("WAHA connection test failed for URL %s: %s\n%s", url, exc, traceback.format_exc())
         return False
 
     async def send_message(self, phone: str, message: str) -> bool:
