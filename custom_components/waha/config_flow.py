@@ -85,7 +85,7 @@ class WahaOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         data_schema = vol.Schema({
-            vol.Required(CONF_DEFAULT_RECIPIENTS, default=",").split(","): str,
+            vol.Required(CONF_DEFAULT_RECIPIENTS, default=","): str,
             vol.Optional(CONF_SESSION_NAME, default=self.config_entry.data.get(CONF_SESSION_NAME, DEFAULT_SESSION_NAME)): str,
         })
         return self.async_show_form(
