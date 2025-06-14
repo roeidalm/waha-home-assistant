@@ -86,7 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     #     _LOGGER.warning("Failed to set up webhook, but continuing with setup")
     # Set up notify platform
     hass.async_create_task(
-        hass.async_forward_entry_setup(entry, "notify")
+        hass.config_entries.async_forward_entry_setup(entry, "notify")
     )
     return True
 
