@@ -66,4 +66,4 @@ async def async_setup_webhook(hass: HomeAssistant, entry: ConfigEntry, client) -
 async def async_remove_webhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
     webhook_id = WEBHOOK_ID_TEMPLATE.format(entry_id=entry.entry_id)
     async_unregister_webhook(hass, webhook_id)
-    _LOGGER.info("Unregistered WAHA webhook for entry %s", entry.entry_id) 
+    _LOGGER.info("Unregistered WAHA webhook for entry %s", entry.entry_id)

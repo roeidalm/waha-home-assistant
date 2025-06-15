@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
+from homeassistant.components import webhook
 
 from .api_client import WahaApiClient, WahaApiError, WahaConnectionError
 from .const import (
@@ -92,6 +93,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up WAHA from a config entry."""
     try:
+        # Ensure webhook component is loaded
+        if not await webhook.async_setup(hass):
+            _LOGGER.error("Failed to set up webhook component")
+            return False
+
         # Get configuration
         base_url = entry.data[CONF_BASE_URL]
         api_key = entry.data.get(CONF_API_KEY)
