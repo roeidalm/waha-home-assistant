@@ -96,24 +96,28 @@ class WahaApiClient:
         params: Optional[Dict[str, Any]] = None,
         timeout: Optional[int] = None
     ) -> Any:
-        """Make an API request with error handling and retries.
+        """Make an API request.
         
         Args:
-            method: HTTP method (GET, POST, etc.)
-            endpoint: API endpoint
+            method: HTTP method
+            endpoint: API endpoint (without leading slash)
             data: Request body data
             params: URL parameters
-            timeout: Custom timeout for this request
-        
+            timeout: Request timeout in seconds
+            
         Returns:
-            Parsed JSON response
-        
+            Any: Response data
+            
         Raises:
-            WahaConnectionError: On connection issues
-            WahaAuthenticationError: On authentication failures
+            WahaConnectionError: On connection errors
+            WahaAuthenticationError: On authentication failure
+            WahaRateLimitError: On rate limit exceeded
             WahaApiError: On other API errors
         """
-        url = urljoin(self.base_url, f"/api/{endpoint.lstrip('/')}")
+        # Remove any leading slashes and 'api/' prefix from the endpoint
+        endpoint = endpoint.lstrip('/').replace('api/', '')
+        url = urljoin(self.base_url, endpoint)
+        
         session = await self._get_session()
         
         if timeout and timeout != self.timeout.total:
@@ -182,7 +186,7 @@ class WahaApiClient:
             bool: True if connection is successful
         """
         try:
-            await self._make_request("GET", "server/status", timeout=10)
+            await self._make_request("GET", "status", timeout=10)
             return True
         except Exception as exc:
             _LOGGER.error("WAHA connection test failed: %s\n%s", exc, traceback.format_exc())

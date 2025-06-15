@@ -1,5 +1,9 @@
 import logging
-from homeassistant.components.webhook import async_register as async_register_webhook, async_unregister as async_unregister_webhook
+from homeassistant.components.webhook import (
+    async_register as async_register_webhook,
+    async_unregister as async_unregister_webhook,
+    async_generate_url
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType
@@ -23,7 +27,7 @@ def is_valid_webhook_request(hass: HomeAssistant, webhook_id: str, request: web.
 async def async_setup_webhook(hass: HomeAssistant, entry: ConfigEntry, client) -> bool:
     """Set up the webhook endpoint for incoming WhatsApp messages."""
     webhook_id = WEBHOOK_ID_TEMPLATE.format(entry_id=entry.entry_id)
-    url = hass.components.webhook.async_generate_url(webhook_id)
+    url = async_generate_url(hass, webhook_id)
 
     async def handle_webhook(hass, webhook_id, request):
         # Security validation
