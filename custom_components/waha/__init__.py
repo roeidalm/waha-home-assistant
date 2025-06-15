@@ -93,11 +93,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up WAHA from a config entry."""
     try:
-        # Ensure webhook component is loaded
-        if not await webhook.async_setup(hass):
-            _LOGGER.error("Failed to set up webhook component")
-            return False
-
         # Get configuration
         base_url = entry.data[CONF_BASE_URL]
         api_key = entry.data.get(CONF_API_KEY)
