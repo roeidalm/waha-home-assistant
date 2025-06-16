@@ -5,14 +5,39 @@ from typing import Any, Dict, Optional
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 
 from .const import (
     DOMAIN,
     MANUFACTURER,
     MODEL,
+    CONF_BASE_URL,
+    CONF_SESSION_NAME,
+    DEFAULT_SESSION_NAME,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+class WahaDevice:
+    """Represents the main WAHA device."""
+    
+    def __init__(self, config_entry: ConfigEntry):
+        """Initialize the WAHA device."""
+        self._config_entry = config_entry
+        self._session_name = config_entry.data.get(CONF_SESSION_NAME, DEFAULT_SESSION_NAME)
+        self._base_url = config_entry.data.get(CONF_BASE_URL)
+        
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._config_entry.entry_id)},
+            name=f"WAHA WhatsApp ({self._session_name})",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            sw_version="1.0",
+            configuration_url=self._base_url,
+        )
 
 class WahaPhoneDevice:
     """Represents a WhatsApp phone number device."""

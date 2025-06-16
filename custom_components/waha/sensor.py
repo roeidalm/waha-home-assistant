@@ -1,110 +1,123 @@
-"""Sensor entities for WAHA WhatsApp integration."""
+"""WAHA sensors."""
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    DOMAIN,
-    MANUFACTURER,
-    MODEL,
-)
-from .api_client import WahaApiClient
+from .const import DOMAIN
+from .device import WahaDevice
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up WAHA sensor entities."""
-    # Get the client from the integration data
-    entry_data = hass.data[DOMAIN][config_entry.entry_id]
-    client = entry_data["client"]
+    """Set up WAHA sensors from a config entry."""
+    data = hass.data[DOMAIN][config_entry.entry_id]
+    api_client = data["api_client"]
     
-    # Create sensor entities
-    entities = [
-        WahaConnectionSensor(client, config_entry.entry_id),
-        WahaSessionSensor(client, config_entry.entry_id),
+    # Create device
+    device = WahaDevice(config_entry)
+    
+    sensors = [
+        WAHAStatusSensor(api_client, device, config_entry),
+        WAHASessionSensor(api_client, device, config_entry),
     ]
     
-    async_add_entities(entities)
+    async_add_entities(sensors, True)
 
-class WahaConnectionSensor(SensorEntity):
-    """Sensor for WAHA connection status."""
-    
-    def __init__(self, client: WahaApiClient, entry_id: str):
-        """Initialize the connection sensor."""
-        self._client = client
-        self._entry_id = entry_id
-        self._attr_name = "WAHA Connection Status"
-        self._attr_unique_id = f"{entry_id}_connection_status"
-        self._attr_icon = "mdi:connection"
-        
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self._entry_id}_main")},
-            name="WAHA WhatsApp Server",
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            sw_version="1.0",
-        )
-        
-    async def async_update(self) -> None:
-        """Update the sensor state."""
-        try:
-            connected = await self._client.test_connection()
-            self._attr_native_value = "Connected" if connected else "Disconnected"
-            self._attr_icon = "mdi:connection" if connected else "mdi:connection-off"
-        except Exception as exc:
-            _LOGGER.error("Failed to update connection status: %s", exc)
-            self._attr_native_value = "Unknown"
-            self._attr_icon = "mdi:help-circle"
 
-class WahaSessionSensor(SensorEntity):
-    """Sensor for WAHA session status."""
-    
-    def __init__(self, client: WahaApiClient, entry_id: str):
-        """Initialize the session sensor."""
-        self._client = client
-        self._entry_id = entry_id
-        self._attr_name = "WAHA Session Status"
-        self._attr_unique_id = f"{entry_id}_session_status"
+class WAHAStatusSensor(SensorEntity):
+    """WAHA status sensor."""
+
+    def __init__(self, api_client, device, config_entry):
+        """Initialize the sensor."""
+        self._api_client = api_client
+        self._device = device
+        self._config_entry = config_entry
+        self._attr_name = "WAHA Status"
+        self._attr_unique_id = f"{config_entry.entry_id}_status"
         self._attr_icon = "mdi:whatsapp"
-        
+        self._state = "Unknown"
+
     @property
-    def device_info(self) -> DeviceInfo:
+    def device_info(self):
         """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self._entry_id}_main")},
-            name="WAHA WhatsApp Server",
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            sw_version="1.0",
-        )
-        
-    async def async_update(self) -> None:
-        """Update the sensor state."""
+        return self._device.device_info
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        data = self.hass.data[DOMAIN][self._config_entry.entry_id]
+        return {
+            "base_url": data.get("base_url"),
+            "session_name": data.get("session_name"),
+            "phone_numbers": len(data.get("phone_numbers", [])),
+            "last_updated": datetime.now().isoformat(),
+        }
+
+    async def async_update(self):
+        """Update the sensor."""
         try:
-            status = await self._client.get_session_status()
-            self._attr_native_value = status or "Unknown"
-            
-            # Set icon based on status
-            if status == "WORKING":
-                self._attr_icon = "mdi:whatsapp"
-            elif status == "DISCONNECTED":
-                self._attr_icon = "mdi:cellphone-off"
+            # Try to get session status
+            status = await self._api_client.get_session_status()
+            if status:
+                self._state = "Connected"
             else:
-                self._attr_icon = "mdi:help-circle"
-                
-        except Exception as exc:
-            _LOGGER.error("Failed to update session status: %s", exc)
-            self._attr_native_value = "Unknown"
-            self._attr_icon = "mdi:help-circle" 
+                self._state = "Disconnected"
+        except Exception as err:
+            _LOGGER.debug("Could not update WAHA status: %s", err)
+            self._state = "Error"
+
+
+class WAHASessionSensor(SensorEntity):
+    """WAHA session information sensor."""
+
+    def __init__(self, api_client, device, config_entry):
+        """Initialize the sensor."""
+        self._api_client = api_client
+        self._device = device
+        self._config_entry = config_entry
+        self._attr_name = "WAHA Session Info"
+        self._attr_unique_id = f"{config_entry.entry_id}_session"
+        self._attr_icon = "mdi:information"
+        self._state = "Unknown"
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return self._device.device_info
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        data = self.hass.data[DOMAIN][self._config_entry.entry_id]
+        return {
+            "session_name": data.get("session_name"),
+            "configured_phones": data.get("phone_numbers", []),
+            "api_configured": bool(data.get("api_key")),
+        }
+
+    async def async_update(self):
+        """Update the sensor."""
+        data = self.hass.data[DOMAIN][self._config_entry.entry_id]
+        session_name = data.get("session_name", "default")
+        self._state = f"Session: {session_name}" 

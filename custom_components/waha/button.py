@@ -14,7 +14,7 @@ from .const import (
     MODEL,
     CONF_PHONE_NUMBERS,
 )
-from .device import WahaPhoneDevice
+from .device import WahaPhoneDevice, WAHADevice
 from .api_client import WahaApiClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +36,14 @@ async def async_setup_entry(
         device = WahaPhoneDevice(phone_number)
         entities.append(WahaMessageButton(client, device, config_entry.entry_id))
     
-    async_add_entities(entities)
+    # Create device
+    device = WAHADevice(config_entry)
+    
+    buttons = [
+        WAHATestConnectionButton(client, device, config_entry),
+    ]
+    
+    async_add_entities(entities + buttons)
 
 class WahaMessageButton(ButtonEntity):
     """Button entity for sending WhatsApp messages."""
@@ -60,3 +67,32 @@ class WahaMessageButton(ButtonEntity):
         # This button doesn't do anything on press by itself
         # It's mainly for UI organization and services will handle the actual sending
         _LOGGER.debug("Message button pressed for %s", self._device.phone_number) 
+
+class WAHATestConnectionButton(ButtonEntity):
+    """Button to test WAHA connection."""
+
+    def __init__(self, api_client, device, config_entry):
+        """Initialize the button."""
+        self._api_client = api_client
+        self._device = device
+        self._config_entry = config_entry
+        self._attr_name = "Test WAHA Connection"
+        self._attr_unique_id = f"{config_entry.entry_id}_test_connection"
+        self._attr_icon = "mdi:connection"
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return self._device.device_info
+
+    async def async_press(self) -> None:
+        """Handle the button press."""
+        try:
+            _LOGGER.info("Testing WAHA connection...")
+            status = await self._api_client.get_session_status()
+            if status:
+                _LOGGER.info("WAHA connection test successful: %s", status)
+            else:
+                _LOGGER.warning("WAHA connection test failed - no status returned")
+        except Exception as err:
+            _LOGGER.error("WAHA connection test failed: %s", err) 

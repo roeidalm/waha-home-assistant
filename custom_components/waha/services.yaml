@@ -1,0 +1,18 @@
+send_message:
+  name: Send WhatsApp Message
+  description: Send a WhatsApp message via WAHA
+  fields:
+    phone_number:
+      name: Phone Number
+      description: Phone number in international format (e.g., +972547773040)
+      required: true
+      selector:
+        text:
+          type: tel
+    message:
+      name: Message
+      description: Message text to send
+      required: true
+      selector:
+        text:
+          multiline: true 
