@@ -114,9 +114,9 @@ class WahaApiClient:
             WahaRateLimitError: On rate limit exceeded
             WahaApiError: On other API errors
         """
-        # Remove any leading slashes and 'api/' prefix from the endpoint
-        endpoint = endpoint.lstrip('/').replace('api/', '')
-        url = urljoin(self.base_url, endpoint)
+        # Remove any leading slashes but keep the 'api/' prefix
+        endpoint = endpoint.lstrip('/')
+        url = urljoin(self.base_url + '/', endpoint)
         
         session = await self._get_session()
         
@@ -186,8 +186,15 @@ class WahaApiClient:
             bool: True if connection is successful
         """
         try:
-            await self._make_request("GET", "status", timeout=10)
-            return True
+            # Use the /api/version endpoint which is available in WAHA CORE
+            response = await self._make_request("GET", "api/version", timeout=10)
+            # Verify we get a valid response with version info
+            if isinstance(response, dict) and "version" in response:
+                _LOGGER.debug("WAHA connection test successful. Version: %s", response.get("version"))
+                return True
+            else:
+                _LOGGER.error("WAHA connection test failed: Invalid response format")
+                return False
         except Exception as exc:
             _LOGGER.error("WAHA connection test failed: %s\n%s", exc, traceback.format_exc())
             return False
@@ -214,12 +221,13 @@ class WahaApiClient:
         
         async def _send() -> bool:
             payload = {
-                "chatId": phone,
-                "body": message,
                 "session": self.session_name,
+                "chatId": phone,
+                "text": message,
             }
             try:
-                await self._make_request("POST", "sendText", data=payload, timeout=15)
+                # Use the correct WAHA endpoint format: /api/sendText
+                await self._make_request("POST", "api/sendText", data=payload, timeout=15)
                 _LOGGER.debug("Message sent to %s", phone)
                 return True
             except WahaApiError as exc:
@@ -240,9 +248,10 @@ class WahaApiClient:
             Optional[str]: QR code data or None if not available
         """
         try:
+            # Use the correct WAHA endpoint format: /api/sessions/qr with session parameter
             response = await self._make_request(
                 "GET", 
-                "session/qr",
+                "api/sessions/qr",
                 params={"session": self.session_name}
             )
             return response.get("qr")
@@ -257,11 +266,9 @@ class WahaApiClient:
             Optional[str]: Session status or None if request failed
         """
         try:
-            response = await self._make_request(
-                "GET", 
-                "session/status",
-                params={"session": self.session_name}
-            )
+            # Use the correct WAHA endpoint format: /api/sessions/{session}
+            endpoint = f"api/sessions/{self.session_name}"
+            response = await self._make_request("GET", endpoint)
             return response.get("status")
         except WahaApiError as exc:
             _LOGGER.error("Failed to get session status: %s", exc)
@@ -274,9 +281,10 @@ class WahaApiClient:
             bool: True if logout was successful
         """
         try:
+            # Use the correct WAHA endpoint format: /api/sessions/logout
             await self._make_request(
                 "POST", 
-                "session/logout",
+                "api/sessions/logout",
                 data={"session": self.session_name}
             )
             return True
