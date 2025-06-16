@@ -63,10 +63,23 @@ class WahaMessageButton(ButtonEntity):
         return self._device.device_info
         
     async def async_press(self) -> None:
-        """Handle button press - this will be used by services."""
-        # This button doesn't do anything on press by itself
-        # It's mainly for UI organization and services will handle the actual sending
-        _LOGGER.debug("Message button pressed for %s", self._device.phone_number) 
+        """Handle button press - send a test message."""
+        try:
+            test_message = f"Test message from Home Assistant - {self._device.phone_number}"
+            _LOGGER.info("Sending test message to %s: %s", self._device.phone_number, test_message)
+            
+            success = await self._client.send_message(
+                chat_id=self._device.phone_number,
+                message=test_message
+            )
+            
+            if success:
+                _LOGGER.info("Test message sent successfully to %s", self._device.phone_number)
+            else:
+                _LOGGER.error("Failed to send test message to %s", self._device.phone_number)
+                
+        except Exception as err:
+            _LOGGER.error("Error sending test message to %s: %s", self._device.phone_number, err)
 
 class WahaTestConnectionButton(ButtonEntity):
     """Button to test WAHA connection."""
