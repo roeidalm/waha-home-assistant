@@ -14,7 +14,7 @@ from .const import (
     MODEL,
     CONF_PHONE_NUMBERS,
 )
-from .device import WahaPhoneDevice, WAHADevice
+from .device import WahaPhoneDevice, WahaDevice
 from .api_client import WahaApiClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,22 +25,22 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up WAHA button entities."""
-    # Get the client and phone numbers from the integration data
+    # Get the API client from the integration data
     entry_data = hass.data[DOMAIN][config_entry.entry_id]
-    client = entry_data["client"]
+    api_client = entry_data["api_client"]
     phone_numbers = entry_data.get("phone_numbers", [])
     
     # Create button entities for each phone number
     entities = []
     for phone_number in phone_numbers:
         device = WahaPhoneDevice(phone_number)
-        entities.append(WahaMessageButton(client, device, config_entry.entry_id))
+        entities.append(WahaMessageButton(api_client, device, config_entry.entry_id))
     
-    # Create device
-    device = WAHADevice(config_entry)
+    # Create main device and test button
+    device = WahaDevice(config_entry)
     
     buttons = [
-        WAHATestConnectionButton(client, device, config_entry),
+        WahaTestConnectionButton(api_client, device, config_entry),
     ]
     
     async_add_entities(entities + buttons)
@@ -68,7 +68,7 @@ class WahaMessageButton(ButtonEntity):
         # It's mainly for UI organization and services will handle the actual sending
         _LOGGER.debug("Message button pressed for %s", self._device.phone_number) 
 
-class WAHATestConnectionButton(ButtonEntity):
+class WahaTestConnectionButton(ButtonEntity):
     """Button to test WAHA connection."""
 
     def __init__(self, api_client, device, config_entry):
