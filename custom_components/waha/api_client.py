@@ -231,39 +231,7 @@ class WahaApiClient:
             _LOGGER.error("Error sending message to %s: %s", phone, exc)
             return False
 
-    async def register_webhook(
-        self, 
-        webhook_url: str,
-        retry_attempts: int = 3,
-        retry_delay: float = 1.0
-    ) -> bool:
-        """Register a webhook for receiving WhatsApp updates.
-        
-        Args:
-            webhook_url: URL that will receive webhook events
-            retry_attempts: Number of retry attempts
-            retry_delay: Delay between retries in seconds
-        
-        Returns:
-            bool: True if webhook was registered successfully
-        """
-        async def _register() -> bool:
-            payload = {
-                "webhook": webhook_url,
-                "session": self.session_name,
-            }
-            try:
-                await self._make_request("POST", "setWebhook", data=payload, timeout=15)
-                _LOGGER.info("Webhook registered: %s", webhook_url)
-                return True
-            except WahaApiError as exc:
-                raise Exception(f"Failed to register webhook: {exc}")
 
-        try:
-            return await async_retry(_register, attempts=retry_attempts, delay=retry_delay)
-        except Exception as exc:
-            _LOGGER.error("Error registering webhook: %s", exc)
-            return False
 
     async def get_qr_code(self) -> Optional[str]:
         """Get the QR code for WhatsApp Web authentication.

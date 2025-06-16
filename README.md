@@ -1,24 +1,23 @@
 # WAHA Home Assistant Integration
 
-A custom component for [Home Assistant](https://www.home-assistant.io/) that integrates with [WAHA (WhatsApp HTTP API)](https://github.com/username/waha) to send and receive WhatsApp messages, automate notifications, and handle WhatsApp events.
+A simple custom component for [Home Assistant](https://www.home-assistant.io/) that integrates with [WAHA (WhatsApp HTTP API)](https://github.com/devlikeapro/waha) to send WhatsApp messages from your Home Assistant automations and scripts.
 
 ---
 
 ## Features
 - Send WhatsApp notifications from Home Assistant automations and scripts
-- Receive WhatsApp messages as Home Assistant events (webhook)
 - Secure API key support
 - Phone number validation and formatting
 - Rate limiting and error handling
 - HACS compatibility for easy updates
-- Example automations for common use cases
+- Simple and lightweight - focused on sending messages only
 
 ---
 
 ## Requirements
 - Home Assistant 2022.0 or newer
 - Python 3.9+
-- A running [WAHA](https://github.com/username/waha) instance (self-hosted WhatsApp HTTP API)
+- A running [WAHA](https://github.com/devlikeapro/waha) instance (self-hosted WhatsApp HTTP API)
 - Network connectivity between Home Assistant and WAHA
 
 ---
@@ -69,41 +68,56 @@ data:
 - `message`: The text to send
 - `target`: Phone number(s) (with country code, e.g., `+1234567890`). If omitted, uses default recipients.
 
-### Handling Incoming WhatsApp Messages
-Incoming messages trigger the `waha_message_received` event:
+### Service Call Example
+You can also use the direct service call:
 
 ```yaml
-automation:
-  - alias: "Respond to WhatsApp Status Request"
-    trigger:
-      platform: event
-      event_type: waha_message_received
-    condition:
-      - condition: template
-        value_template: '{{ trigger.event.data.message | lower == "status" }}'
-    action:
-      - service: notify.waha_whatsapp
-        data:
-          target: "{{ trigger.event.data.sender }}"
-          message: "Home status: All systems operational."
+service: waha.send_message
+data:
+  phone: "+1234567890"
+  message: "Hello from Home Assistant!"
 ```
-
-**Event data includes:**
-- `sender`: Phone number of the sender
-- `message`: Message text
-- `timestamp`, `session`, `message_id`
 
 ---
 
 ## Example Automations
-See the [`examples/`](./examples/) directory for ready-to-use YAML:
-- `notifications.yaml`: Send notifications on events (e.g., door open, weather report)
-- `message_handling.yaml`: Respond to WhatsApp messages, control devices via WhatsApp
+
+### Door Open Notification
+```yaml
+automation:
+  - alias: "Notify when door opens"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.front_door
+      to: "on"
+    action:
+      - service: notify.waha_whatsapp
+        data:
+          message: "🚪 Front door has been opened!"
+          target: "+1234567890"
+```
+
+### Daily Weather Report
+```yaml
+automation:
+  - alias: "Daily weather report"
+    trigger:
+      platform: time
+      at: "08:00:00"
+    action:
+      - service: notify.waha_whatsapp
+        data:
+          message: >
+            🌤️ Good morning! Today's weather:
+            {{ states('weather.home') }}
+            High: {{ state_attr('weather.home', 'temperature') }}°
+            {{ state_attr('weather.home', 'forecast')[0].condition }}
+```
 
 ---
 
 ## Troubleshooting
-- See [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) for solutions to common issues (connection, API key, webhook, etc.)
+- See [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) for solutions to common issues
 - Enable debug logging in `configuration.yaml`:
   ```yaml
   logger:
@@ -112,6 +126,8 @@ See the [`examples/`](./examples/) directory for ready-to-use YAML:
       custom_components.waha: debug
   ```
 - Check Home Assistant and WAHA logs for errors
+- Ensure your WAHA instance is running and accessible
+- Verify phone numbers include country code (e.g., `+1234567890`)
 
 ---
 
@@ -122,7 +138,7 @@ See the [`examples/`](./examples/) directory for ready-to-use YAML:
 ---
 
 ## Contributing & Support
-- Pull requests and issues are welcome! See [GitHub Issues](https://github.com/username/waha-home-assistant/issues)
+- Pull requests and issues are welcome! See [GitHub Issues](https://github.com/roeidalm/waha-home-assistant/issues)
 - For help, check the troubleshooting guide or open an issue with logs and details
 - Please include Home Assistant version, WAHA version, and steps to reproduce any problems
 

@@ -28,7 +28,6 @@ from .const import (
     CONF_TIMEOUT,
     DEFAULT_TIMEOUT,
 )
-from .webhook import async_setup_webhook
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -138,12 +137,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "default_recipients": default_recipients,
             "status": session_status or "unknown",
         }
-
-        # Set up webhook
-        if not await async_setup_webhook(hass, entry, client):
-            _LOGGER.warning(
-                "Failed to set up webhook, but continuing with setup"
-            )
 
         # Set up notify platform
         await hass.config_entries.async_forward_entry_setup(entry, "notify")

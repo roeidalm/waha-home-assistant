@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to WAHA WhatsApp API",
-        "description": "Set up WAHA integration to send and receive WhatsApp messages",
+        "description": "Set up WAHA integration to send WhatsApp messages from Home Assistant",
         "data": {
           "base_url": "WAHA Server URL (e.g., http://your-waha-instance:3000)",
           "api_key": "API Key (optional)",
@@ -47,6 +47,20 @@
             "description": "Phone number(s) to send the message to. Use international format (e.g., +1234567890).",
             "example": "+1234567890"
           }
+        }
+      }
+    },
+    "send_message": {
+      "name": "Send WhatsApp Message",
+      "description": "Send a WhatsApp message directly using WAHA service.",
+      "fields": {
+        "phone": {
+          "description": "Phone number to send the message to. Use international format (e.g., +1234567890).",
+          "example": "+1234567890"
+        },
+        "message": {
+          "description": "The message to send via WhatsApp.",
+          "example": "Hello from Home Assistant!"
         }
       }
     }

@@ -1,10 +1,10 @@
 {
   "domain": "waha",
-  "name": "WAHA WhatsApp Integration",
+  "name": "WAHA WhatsApp Sender",
   "documentation": "https://github.com/roeidalm/waha-home-assistant",
   "dependencies": [],
   "codeowners": ["@roeidalm"],
   "requirements": ["aiohttp"],
   "config_flow": true,
-  "version": "0.1.8"
+  "version": "0.2.0"
 } 
