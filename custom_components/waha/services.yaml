@@ -4,7 +4,7 @@ send_message:
   fields:
     phone_number:
       name: Phone Number
-      description: Phone number in international format (e.g., +972547773040)
+      description: Phone number in international format (e.g., +972541234567) or select from configured numbers
       required: true
       selector:
         text:

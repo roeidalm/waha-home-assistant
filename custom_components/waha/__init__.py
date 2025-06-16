@@ -79,7 +79,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("WAHA: Sending message to %s: %s", phone_number, message)
         
         try:
-            result = await api_client.send_message(phone_number, str(message))
+            result = await api_client.send_message(chat_id=phone_number, message=str(message))
             _LOGGER.info("WAHA: Message sent successfully: %s", result)
         except Exception as err:
             _LOGGER.error("WAHA: Failed to send message: %s", err)
@@ -95,8 +95,60 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         _LOGGER.info("WAHA: Service registered: waha.send_message")
     
-    # Set up platforms
+    # Set up platforms  
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
+    # Set up notification services for each phone number
+    phone_numbers = entry.data.get(CONF_PHONE_NUMBERS, [])
+    for phone_number in phone_numbers:
+        # Clean phone number for service name (remove + and spaces)
+        clean_number = phone_number.replace("+", "").replace(" ", "").replace("-", "")
+        service_name = f"waha_{clean_number}"
+        
+        # Create notification service handler with proper closure
+        def create_notification_handler(target_phone):
+            """Create a notification handler for a specific phone number."""
+            async def send_notification_handler(call):
+                """Handle notification service call."""
+                message = call.data.get("message", "")
+                try:
+                    # Convert template if needed
+                    if hasattr(message, 'async_render'):
+                        message = message.async_render()
+                    
+                    message_text = str(message).strip()
+                    if not message_text:
+                        _LOGGER.error("Cannot send empty message to %s", target_phone)
+                        return
+                    
+                    _LOGGER.info("Sending notification to %s: %s", target_phone, message_text)
+                    
+                    result = await api_client.send_message(
+                        chat_id=target_phone,
+                        message=message_text
+                    )
+                    
+                    if result:
+                        _LOGGER.info("Notification sent successfully to %s", target_phone)
+                    else:
+                        _LOGGER.error("Failed to send notification to %s", target_phone)
+                        
+                except Exception as err:
+                    _LOGGER.error("Error sending notification to %s: %s", target_phone, err)
+            return send_notification_handler
+        
+        # Register the notification service with proper schema
+        hass.services.async_register(
+            "notify",
+            service_name,
+            create_notification_handler(phone_number),
+            schema=vol.Schema({
+                vol.Required("message"): cv.template,
+                vol.Optional("title"): cv.template,
+            }),
+        )
+        
+        _LOGGER.info("Registered notification service: notify.%s for %s", service_name, phone_number)
     
     _LOGGER.info("WAHA integration setup completed")
     return True

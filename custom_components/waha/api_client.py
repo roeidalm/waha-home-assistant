@@ -138,7 +138,7 @@ class WahaApiClient:
                     raise WahaAuthenticationError("Authentication failed", resp.status)
                 elif resp.status == 429:
                     raise WahaRateLimitError("Rate limit exceeded", resp.status)
-                elif resp.status != 200:
+                elif resp.status not in [200, 201]:
                     text = await resp.text()
                     raise WahaApiError(
                         f"API request failed: {resp.status}",
@@ -234,7 +234,7 @@ class WahaApiClient:
             try:
                 # Use the correct WAHA endpoint format: /api/sendText
                 response = await self._make_request("POST", "api/sendText", data=payload, timeout=15)
-                _LOGGER.debug("Message sent to %s, response: %s", chat_id, response)
+                _LOGGER.info("Message sent successfully to %s, message ID: %s", chat_id, response.get("id", "unknown"))
                 return True
             except WahaApiError as exc:
                 _LOGGER.error("WAHA API error sending message to %s: %s (status: %s, response: %s)", 
