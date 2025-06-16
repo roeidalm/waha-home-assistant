@@ -6,13 +6,13 @@ DOMAIN: Final = "waha"
 # Configuration
 CONF_BASE_URL = "base_url"
 CONF_API_KEY = "api_key"
-CONF_DEFAULT_RECIPIENTS = "default_recipients"
+CONF_PHONE_NUMBERS = "phone_numbers"
 CONF_SESSION_NAME = "session_name"
 CONF_RATE_LIMIT = "rate_limit"
 CONF_TIMEOUT = "timeout"
 
 # Defaults
-DEFAULT_SESSION_NAME = "home-assistant"
+DEFAULT_SESSION_NAME = "default"
 DEFAULT_RATE_LIMIT = 10  # messages per minute
 DEFAULT_TIMEOUT = 30  # seconds
 
@@ -38,12 +38,19 @@ import homeassistant.helpers.config_validation as cv
 WAHA_SCHEMA = vol.Schema({
     vol.Required(CONF_BASE_URL): cv.url,
     vol.Optional(CONF_API_KEY): cv.string,
-    vol.Required(CONF_DEFAULT_RECIPIENTS): [cv.string],
+    vol.Required(CONF_PHONE_NUMBERS): [cv.string],
     vol.Optional(CONF_SESSION_NAME, default=DEFAULT_SESSION_NAME): cv.string,
 })
 
-# Service name
-SERVICE_NOTIFY = "waha_whatsapp"
+# Service names
+SERVICE_SEND_MESSAGE = "send_message"
 
 # Platforms
-PLATFORMS = ["notify"] 
+PLATFORMS = ["sensor", "button"]
+
+# Entity types
+PHONE_NUMBER_ENTITY = "phone_number"
+
+# Device info
+MANUFACTURER = "WAHA"
+MODEL = "WhatsApp API" 

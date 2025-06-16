@@ -20,24 +20,25 @@ from .const import (
     DOMAIN,
     CONF_BASE_URL,
     CONF_API_KEY,
-    CONF_DEFAULT_RECIPIENTS,
+    CONF_PHONE_NUMBERS,
     CONF_SESSION_NAME,
     DEFAULT_SESSION_NAME,
     CONF_RATE_LIMIT,
     DEFAULT_RATE_LIMIT,
     CONF_TIMEOUT,
     DEFAULT_TIMEOUT,
+    SERVICE_SEND_MESSAGE,
+    PLATFORMS,
 )
+from .helpers import validate_phone_number
 
 _LOGGER = logging.getLogger(__name__)
-
-PLATFORMS = [Platform.NOTIFY]
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_BASE_URL): cv.url,
         vol.Optional(CONF_API_KEY): cv.string,
-        vol.Optional(CONF_DEFAULT_RECIPIENTS, default=[]): vol.All(
+        vol.Optional(CONF_PHONE_NUMBERS, default=[]): vol.All(
             cv.ensure_list, [cv.string]
         ),
         vol.Optional(CONF_SESSION_NAME, default=DEFAULT_SESSION_NAME): cv.string,
@@ -50,8 +51,14 @@ CONFIG_SCHEMA = vol.Schema({
     })
 }, extra=vol.ALLOW_EXTRA)
 
+# Service schemas
 SERVICE_SCHEMA_SEND_MESSAGE = vol.Schema({
-    vol.Required("phone"): cv.string,
+    vol.Required("phone_number"): cv.string,
+    vol.Required("message"): cv.string,
+})
+
+SERVICE_SCHEMA_SEND_MESSAGE_TO_CONTACT = vol.Schema({
+    vol.Required("entity_id"): cv.string,
     vol.Required("message"): cv.string,
 })
 
@@ -62,28 +69,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     if DOMAIN not in config:
         return True
 
-    # Register services
-    async def send_message(call: ServiceCall) -> None:
-        """Service to send a WhatsApp message."""
-        phone = call.data["phone"]
-        message = call.data["message"]
-        
-        for entry_id, entry_data in hass.data[DOMAIN].items():
-            if "client" in entry_data:
-                client: WahaApiClient = entry_data["client"]
-                try:
-                    if await client.send_message(phone, message):
-                        _LOGGER.debug("Message sent successfully to %s", phone)
-                        return
-                    _LOGGER.error("Failed to send message to %s", phone)
-                except WahaApiError as exc:
-                    _LOGGER.error("Error sending message to %s: %s", phone, exc)
-                return
-        
-        _LOGGER.error("No configured WAHA integration found")
-
-    hass.services.async_register(
-        DOMAIN, "send_message", send_message, schema=SERVICE_SCHEMA_SEND_MESSAGE
+    # YAML configuration is deprecated in favor of config entries
+    _LOGGER.warning(
+        "Configuration of WAHA integration via YAML is deprecated. "
+        "Please use the UI configuration instead."
     )
     
     return True
@@ -98,17 +87,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         rate_limit = entry.data.get(CONF_RATE_LIMIT, DEFAULT_RATE_LIMIT)
         timeout = entry.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
         
-        # Get default recipients from options or data
-        default_recipients_str = entry.options.get(
-            CONF_DEFAULT_RECIPIENTS,
-            entry.data.get(CONF_DEFAULT_RECIPIENTS, "")
-        )
-        
-        # Convert comma-separated string to list
-        if isinstance(default_recipients_str, str) and default_recipients_str:
-            default_recipients = [num.strip() for num in default_recipients_str.split(",") if num.strip()]
-        else:
-            default_recipients = []
+        # Get phone numbers from config entry
+        phone_numbers = entry.data.get(CONF_PHONE_NUMBERS, [])
 
         # Create API client
         client = WahaApiClient(
@@ -130,7 +110,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         session_status = await client.get_session_status()
         if session_status is None:
             _LOGGER.warning("Could not get WhatsApp session status")
-        elif session_status != "authenticated":
+        elif session_status != "WORKING":
             _LOGGER.warning(
                 "WhatsApp session is not authenticated. Status: %s", 
                 session_status
@@ -140,12 +120,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.setdefault(DOMAIN, {})
         hass.data[DOMAIN][entry.entry_id] = {
             "client": client,
-            "default_recipients": default_recipients,
+            "phone_numbers": phone_numbers,
             "status": session_status or "unknown",
         }
 
-        # Set up notify platform
-        await hass.config_entries.async_forward_entry_setups(entry, [Platform.NOTIFY])
+        # Set up platforms
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+        # Register services
+        await _async_register_services(hass, entry)
 
         # Register update listener for config entry changes
         entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -166,6 +149,112 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"Unexpected error setting up WAHA: {exc}"
         ) from exc
 
+async def _async_register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Register WAHA services."""
+    
+    async def send_message(call: ServiceCall) -> None:
+        """Service to send a WhatsApp message to any phone number."""
+        phone_number = call.data["phone_number"]
+        message = call.data["message"]
+        
+        # Validate phone number
+        valid_phone = validate_phone_number(phone_number)
+        if not valid_phone:
+            _LOGGER.error("Invalid phone number format: %s", phone_number)
+            return
+            
+        # Get the client for this integration entry
+        entry_data = hass.data[DOMAIN].get(entry.entry_id)
+        if not entry_data:
+            _LOGGER.error("WAHA integration not found")
+            return
+            
+        client: WahaApiClient = entry_data["client"]
+        
+        try:
+            # Format chat ID for WAHA
+            chat_id = valid_phone
+            if not chat_id.endswith("@c.us"):
+                clean_number = valid_phone.lstrip('+')
+                chat_id = f"{clean_number}@c.us"
+                
+            success = await client.send_message(chat_id, message)
+            if success:
+                _LOGGER.info("Message sent successfully to %s", phone_number)
+            else:
+                _LOGGER.error("Failed to send message to %s", phone_number)
+        except WahaApiError as exc:
+            _LOGGER.error("Error sending message to %s: %s", phone_number, exc)
+
+    async def send_message_to_contact(call: ServiceCall) -> None:
+        """Service to send a WhatsApp message to a configured contact."""
+        entity_id = call.data["entity_id"]
+        message = call.data["message"]
+        
+        # Extract phone number from entity_id
+        # Entity ID format: button.waha_send_message_to_1234567890
+        try:
+            # Get the device ID from the entity
+            entity_registry = hass.helpers.entity_registry.async_get(hass)
+            entity_entry = entity_registry.async_get(entity_id)
+            
+            if not entity_entry:
+                _LOGGER.error("Entity not found: %s", entity_id)
+                return
+                
+            # Get the device
+            device_registry = hass.helpers.device_registry.async_get(hass)
+            device = device_registry.async_get(entity_entry.device_id)
+            
+            if not device:
+                _LOGGER.error("Device not found for entity: %s", entity_id)
+                return
+                
+            # Extract phone number from device identifiers
+            phone_number = None
+            for identifier in device.identifiers:
+                if identifier[0] == DOMAIN:
+                    # The device ID is the phone number without + and @c.us
+                    device_id = identifier[1]
+                    # Convert back to phone number format
+                    phone_number = f"+{device_id}"
+                    break
+                    
+            if not phone_number:
+                _LOGGER.error("Could not extract phone number from device")
+                return
+                
+            # Send the message
+            await send_message(ServiceCall(DOMAIN, SERVICE_SEND_MESSAGE, {
+                "phone_number": phone_number,
+                "message": message
+            }))
+            
+        except Exception as exc:
+            _LOGGER.error("Error processing entity %s: %s", entity_id, exc)
+
+    # Register services only once per integration
+    service_name = f"{SERVICE_SEND_MESSAGE}_{entry.entry_id}"
+    
+    if not hass.services.has_service(DOMAIN, SERVICE_SEND_MESSAGE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SEND_MESSAGE,
+            send_message,
+            schema=SERVICE_SCHEMA_SEND_MESSAGE,
+        )
+        _LOGGER.info("Registered WAHA service: %s.%s", DOMAIN, SERVICE_SEND_MESSAGE)
+
+    contact_service_name = f"send_message_to_contact"
+    if not hass.services.has_service(DOMAIN, contact_service_name):
+        hass.services.async_register(
+            DOMAIN,
+            contact_service_name,
+            send_message_to_contact,
+            schema=SERVICE_SCHEMA_SEND_MESSAGE_TO_CONTACT,
+        )
+        _LOGGER.info("Registered WAHA service: %s.%s", DOMAIN, contact_service_name)
+
 def get_connection_status(hass: HomeAssistant, entry_id: str) -> str:
     """Get the connection status for a WAHA integration entry."""
     return hass.data.get(DOMAIN, {}).get(entry_id, {}).get('status', 'unknown')
@@ -173,12 +262,12 @@ def get_connection_status(hass: HomeAssistant, entry_id: str) -> str:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     try:
-        # Unload notify platform
+        # Unload platforms
         unload_ok = await hass.config_entries.async_forward_entry_unloads(
-            entry, [Platform.NOTIFY]
+            entry, PLATFORMS
         )
 
-        # Close API client
+        # Close API client and remove data
         if unload_ok and entry.entry_id in hass.data[DOMAIN]:
             entry_data = hass.data[DOMAIN][entry.entry_id]
             if "client" in entry_data:
