@@ -91,7 +91,7 @@ class WahaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _test_connection(self, data: Dict[str, Any]) -> bool:
         """Test connection to WAHA instance."""
-        url = f"{data[CONF_BASE_URL]}/api/server/status"
+        url = f"{data[CONF_BASE_URL]}/api/version"
         headers = {"accept": "application/json"}
         
         if api_key := data.get(CONF_API_KEY):
@@ -101,7 +101,10 @@ class WahaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers, timeout=10) as resp:
                     if resp.status == 200:
-                        return True
+                        response_data = await resp.json()
+                        if "version" in response_data:
+                            _LOGGER.debug("WAHA connection test successful. Version: %s", response_data.get("version"))
+                            return True
                     _LOGGER.error(
                         "WAHA server returned status %s: %s",
                         resp.status,

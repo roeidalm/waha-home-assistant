@@ -201,7 +201,7 @@ class WahaApiClient:
 
     async def send_message(
         self, 
-        phone: str, 
+        chat_id: str, 
         message: str,
         retry_attempts: int = 3,
         retry_delay: float = 1.0
@@ -209,7 +209,7 @@ class WahaApiClient:
         """Send a WhatsApp message.
         
         Args:
-            phone: Recipient's phone number
+            chat_id: WhatsApp chat ID (phone number with @c.us suffix or phone number)
             message: Message text
             retry_attempts: Number of retry attempts
             retry_delay: Delay between retries in seconds
@@ -219,24 +219,32 @@ class WahaApiClient:
         """
         await self._wait_for_rate_limit()
         
+        # Ensure chat_id has proper format for WhatsApp
+        if not chat_id.endswith("@c.us") and not chat_id.endswith("@g.us"):
+            # If it's just a phone number, format it properly
+            clean_number = chat_id.lstrip('+').replace(' ', '').replace('-', '')
+            chat_id = f"{clean_number}@c.us"
+        
         async def _send() -> bool:
             payload = {
                 "session": self.session_name,
-                "chatId": phone,
+                "chatId": chat_id,
                 "text": message,
             }
             try:
                 # Use the correct WAHA endpoint format: /api/sendText
-                await self._make_request("POST", "api/sendText", data=payload, timeout=15)
-                _LOGGER.debug("Message sent to %s", phone)
+                response = await self._make_request("POST", "api/sendText", data=payload, timeout=15)
+                _LOGGER.debug("Message sent to %s, response: %s", chat_id, response)
                 return True
             except WahaApiError as exc:
-                raise Exception(f"Failed to send message to {phone}: {exc}")
+                _LOGGER.error("WAHA API error sending message to %s: %s (status: %s, response: %s)", 
+                             chat_id, exc, exc.status_code, exc.response_text)
+                raise Exception(f"Failed to send message to {chat_id}: {exc}")
 
         try:
             return await async_retry(_send, attempts=retry_attempts, delay=retry_delay)
         except Exception as exc:
-            _LOGGER.error("Error sending message to %s: %s", phone, exc)
+            _LOGGER.error("Error sending message to %s: %s", chat_id, exc)
             return False
 
 

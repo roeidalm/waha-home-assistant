@@ -99,10 +99,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         timeout = entry.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
         
         # Get default recipients from options or data
-        default_recipients = entry.options.get(
+        default_recipients_str = entry.options.get(
             CONF_DEFAULT_RECIPIENTS,
-            entry.data.get(CONF_DEFAULT_RECIPIENTS, [])
+            entry.data.get(CONF_DEFAULT_RECIPIENTS, "")
         )
+        
+        # Convert comma-separated string to list
+        if isinstance(default_recipients_str, str) and default_recipients_str:
+            default_recipients = [num.strip() for num in default_recipients_str.split(",") if num.strip()]
+        else:
+            default_recipients = []
 
         # Create API client
         client = WahaApiClient(
