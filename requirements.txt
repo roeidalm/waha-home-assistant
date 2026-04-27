@@ -1,4 +1,4 @@
-aiohttp>=3.8.0
+aiohttp>=3.13.5
 voluptuous>=0.13.1,<0.17.0
 homeassistant>=2025.2.0
 pytest-homeassistant-custom-component>=0.13.0
